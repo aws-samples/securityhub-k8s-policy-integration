@@ -49,7 +49,7 @@ EOF
 3. Create run a non compliant namespace with:
 ```kubectl create namespace non-compliant```
 4. Check the Kubernetes policy report status with:
-```kubectl get clusterpolicies```
+```kubectl get clusterpolicyreport -o yaml```
 
 ## Integrating Gatekeeper
 
