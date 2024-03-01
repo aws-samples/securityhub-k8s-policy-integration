@@ -1,0 +1,150 @@
+Transform: 
+  - "AWS::LanguageExtensions"
+  - "AWS::Serverless-2016-10-31"
+Description: AWS Security Hub integration for Kubernetes Policy as Code
+
+Parameters:
+  Policy:
+    Type: String
+    Default: policyreport
+    Description: Policy as code solution to integrate to AWS Security Hub
+    AllowedValues:
+      - gatekeeper
+      - policyreport
+  ScheduleExpression:
+    Type: String
+    Default: "rate(10 minutes)"
+  AccessEntryEnabled:
+    Default: true
+    Type: String
+    AllowedValues: [true, false]
+  ClusterNames:
+    Type: CommaDelimitedList
+    Description: Comma separated list of AWS EKS cluster to integrate
+  SubnetIds:
+    Type: CommaDelimitedList
+    Description: (Optional) List of Subnet IDs for the Lambda function
+    Default: ""
+  SecurityGroupId:
+    Type: String
+    Description: (Optional) The Security Group ID for the Lambda function
+    AllowedPattern: "(^$)|(^sg-[a-zA-Z0-9]+$)"
+    Default: ""
+Conditions:
+  DeployInVPC: !Not [!Equals [!Ref SecurityGroupId, ""]]
+  DeployAccessEntry: !Equals [true, !Ref AccessEntryEnabled]
+
+Resources:
+  KubernetesPACIntegration:
+    Type: AWS::Serverless::Function
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W89
+            reason: VPC is configurable using parameters
+          - id: W58
+            reason: ReservedConcurrentExecutions not required
+    Properties:
+      FunctionName: !Sub aws-securityhub-k8s-policy-${AWS::Region}
+      Handler: lambda_function.lambda_handler
+      Runtime: python3.11
+      CodeUri: lambda_build/.
+      Description: Call the AWS Lambda API
+      Role: !GetAtt "IntegrationFunctionRole.Arn"
+      Timeout: 300
+      MemorySize: 256
+      Environment:
+        Variables:
+          POLICY_SOURCE: !Ref Policy
+      VpcConfig:
+        Fn::If:
+          - DeployInVPC
+          - SubnetIds: !Split [",", !Join [",", !Ref SubnetIds]]
+            SecurityGroupIds:
+              - !Ref SecurityGroupId
+          - !Ref AWS::NoValue
+
+  IntegrationFunctionRole:
+    Type: AWS::IAM::Role
+    Metadata:
+      cfn_nag:
+        rules_to_suppress:
+          - id: W11
+            reason: Security Hub findings action require wildcards
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      Path: /
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: integration-permissions
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - eks:DescribeCluster
+                  - eks:ListClusters
+                Resource: !Sub "arn:${AWS::Partition}:eks:${AWS::Region}:${AWS::AccountId}:cluster/*"
+              - Effect: Allow
+                Action:
+                  - securityhub:BatchImportFindings
+                  - securityhub:GetFindings
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - ec2:CreateNetworkInterface
+                  - ec2:DescribeNetworkInterfaces
+                  - ec2:DeleteNetworkInterface
+                Resource: "*"
+
+  ScheduledEvent:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Keep Security Hub findings in sync with Policy as Code (PAC)
+      Name: securityhub-k8s-policy
+      ScheduleExpression: !Ref ScheduleExpression
+      State: "ENABLED"
+      Targets:
+        - Arn: !GetAtt KubernetesPACIntegration.Arn
+          Id: "TargetFunctionV1"
+
+  PermissionForEventsToInvokeRefreshLambda:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Ref: "KubernetesPACIntegration"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn:
+        Fn::GetAtt:
+          - "ScheduledEvent"
+          - "Arn"
+
+  "Fn::ForEach::Cluster":
+    - ClusterName
+    - !Ref ClusterNames
+    - EKSAccessEntry&{ClusterName}:
+        Type: AWS::EKS::AccessEntry
+        Condition: DeployAccessEntry
+        Properties:
+          ClusterName: !Ref ClusterName
+          PrincipalArn: !GetAtt IntegrationFunctionRole.Arn
+          Username: "PolicyIntegration"
+          AccessPolicies:
+            - PolicyArn: !Sub arn:${AWS::Partition}:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+              AccessScope:
+                Type: "cluster"
+
+Outputs:
+  Role:
+    Description: IAM Role
+    Value: !GetAtt "IntegrationFunctionRole.Arn"

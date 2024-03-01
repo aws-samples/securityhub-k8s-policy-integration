@@ -1,0 +1,22 @@
+[
+    {
+        "ParameterKey":"Policy",
+        "ParameterValue":"policyreport"
+    },
+    {
+        "ParameterKey":"SubnetIds",
+        "ParameterValue":"subnet-0123456789abcdeff,subnet-abcdeff0123456789"
+    },
+    {
+        "ParameterKey":"SecurityGroupId",
+        "ParameterValue":"sg-0123456789abcdeff"
+    },
+    {
+        "ParameterKey":"AccessEntryEnabled",
+        "ParameterValue":"True"
+    },
+    {
+        "ParameterKey":"ClusterNames",
+        "ParameterValue":"kyverno-demo"
+    }
+]
