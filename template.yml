@@ -20,6 +20,7 @@ Parameters:
     AllowedValues: [true, false]
   ClusterNames:
     Type: CommaDelimitedList
+    Default: ""
     Description: Comma separated list of AWS EKS cluster to integrate
   SubnetIds:
     Type: CommaDelimitedList
@@ -56,6 +57,7 @@ Resources:
       Environment:
         Variables:
           POLICY_SOURCE: !Ref Policy
+          CLUSTER_NAMES: !Join [",", !Ref ClusterNames]
       VpcConfig:
         Fn::If:
           - DeployInVPC

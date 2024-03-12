@@ -15,9 +15,15 @@ apiVersion: rbac.authorization.k8s.io/v1
 metadata:
   name: read-only
 rules:
-- apiGroups: ["*"]
+- apiGroups: ["constraints.gatekeeper.sh"]
   resources: ["*"]
   verbs: ["get", "watch", "list"]
+- apiGroups: ["wgpolicyk8s.io"]
+  resources: ["*"]
+  verbs: ["get", "watch", "list"]
+- apiGroups: [""]
+  resources: ["namespaces"]
+  verbs: ["list"]
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1

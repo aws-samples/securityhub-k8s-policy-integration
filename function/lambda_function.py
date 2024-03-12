@@ -147,7 +147,7 @@ def import_new_findings(new_findings):
                     ),
                 )
             else:
-                logger.info("Findings imported to Security Hub")
+                logger.info(f'{len(new_findings)} Findings imported to Security Hub')
     except Exception as error:
         logger.error("Error:  %s", error)
         raise
@@ -368,7 +368,7 @@ def parse_gatekeeper_audit_report(api_client, cluster_info):
 
                         if len(violations) < total_violations:
                             logger.info(
-                                "There are violations are missing in the report, create meta-finding to notify user",
+                                f'There are violations are missing in the report ({len(violations)} out of {total_violations}), create meta-finding to notify user',
                             )
                             constraint_item["metadata"]["severity"] = "INFORMATIONAL"
                             violation = {
@@ -397,8 +397,9 @@ def parse_gatekeeper_audit_report(api_client, cluster_info):
 
 def lambda_handler(_event, _context):
     policy_source = os.environ["POLICY_SOURCE"]
-
-    clusters = eks.list_clusters()["clusters"]
+    clusters = os.environ["CLUSTER_NAMES"].split(",")
+    # Enable to run integration against all clusters
+    # clusters = eks.list_clusters()["clusters"]
     lambda_function_arn_context = _context.invoked_function_arn.split(":")
     partition = aws_account_id = lambda_function_arn_context[1]
     region = aws_account_id = lambda_function_arn_context[3]
@@ -412,7 +413,8 @@ def lambda_handler(_event, _context):
         cluster_info["clusterName"] = cluster_name
         kubeconfig = get_kube_config(cluster_name)
         api_client = config.new_client_from_config_dict(config_dict=kubeconfig)
-        api_client.configuration.debug = True
+        # Enable to debug Kubernetes requests
+        # api_client.configuration.debug = True
 
         if policy_source == "gatekeeper":
             securityhub_findings = parse_gatekeeper_audit_report(
@@ -429,4 +431,4 @@ def lambda_handler(_event, _context):
 
 
 if __name__ == "__main__":
-    handler(None, None)
+    lambda_handler(None, None)
