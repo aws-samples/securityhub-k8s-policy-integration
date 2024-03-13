@@ -4,6 +4,12 @@ This solution enables Kubernetes administrators to send audit findings of their 
 
 ## Prerequisites
 
+* [eksctl CLI](https://docs.aws.amazon.com/eks/latest/userguide/getting-started-eksctl.html)
+* [kubectl CLI](https://docs.aws.amazon.com/eks/latest/userguide/install-kubectl.html)
+* [AWS CLI](https://aws.amazon.com/cli/)
+* [Python3 installed](https://www.python.org/)
+
+
 ## Deploying a new integration
 
 1. Configure `parameters.json` with:
@@ -11,8 +17,12 @@ This solution enables Kubernetes administrators to send audit findings of their 
 * `ClusterNames`: List of cluster names to configure the integration for. (Optional) When deploying access entries, this is the list of cluster names to configure access entries for.
 * `SubnetIds`: (Optional) A comma separated value of subnets. You will need to configure if you've configured your EKS cluster API endpoints as private only, remove if your AWS EKS clusters have public endpoint enabled.
 * `SecurityGroupId`: (Optional) A security group ID that allows connectivity to the EKS clusters. Only required if running only private API endpoints, otherwise you can remove it. This security group should be allowed ingress from the Amazon EKS control plane security group.
-* `AccessEntryEnabled`: AccessEntryEnabled — (Optional) If you’re using AWS EKS access entries, the solution will automatically deploy the access entries AmazonEKSClusterAdminPolicy for the integration to access your EKS clusters.
+* `AccessEntryEnabled`: AccessEntryEnabled — (Optional) If you’re using AWS EKS access entries, the solution will automatically deploy the access entries with `read-only-group permissions` for the integration to access your EKS clusters.
 2. Run `./deploy.sh`
+
+## Configure access to EKS clusters
+
+Run the `kube-setup.sh` script to create the Kubernetes read-only cluster role, cluster role binding and optionally new aws-auth ConfigMap by using `eksctl`. 
 
 ## Disabling integration
 

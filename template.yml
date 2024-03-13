@@ -141,10 +141,8 @@ Resources:
           ClusterName: !Ref ClusterName
           PrincipalArn: !GetAtt IntegrationFunctionRole.Arn
           Username: "PolicyIntegration"
-          AccessPolicies:
-            - PolicyArn: !Sub arn:${AWS::Partition}:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
-              AccessScope:
-                Type: "cluster"
+          KubernetesGroups:
+            - "read-only-group"
 
 Outputs:
   Role:
