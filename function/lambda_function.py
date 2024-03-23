@@ -147,7 +147,7 @@ def import_new_findings(new_findings):
                     ),
                 )
             else:
-                logger.info(f'{len(new_findings)} Findings imported to Security Hub')
+                logger.info(f"{len(new_findings)} Findings imported to Security Hub")
     except Exception as error:
         logger.error("Error:  %s", error)
         raise
@@ -221,9 +221,11 @@ def map_policy_violation_to_asff(cluster, rule, violation):
     }
     return new_finding
 
+
 def map_gatekeeper_fields(cluster_name, group, kind, name, separator):
-     join_fields = [s for s in (cluster_name, group, kind, name) if s] 
-     return separator.join(join_fields)
+    join_fields = [s for s in (cluster_name, group, kind, name) if s]
+    return separator.join(join_fields)
+
 
 def map_gatekeeper_violation_to_asff(cluster, constraint, violation):
     """Create a Security Hub finding based on Gatekeeper violation"""
@@ -236,20 +238,18 @@ def map_gatekeeper_violation_to_asff(cluster, constraint, violation):
     region = cluster["region"]
     partition = cluster["partition"]
 
-    kind = violation.get("kind","")
-    group = violation.get("group","")
-    name = violation.get("name","")
+    kind = violation.get("kind", "")
+    group = violation.get("group", "")
+    name = violation.get("name", "")
     violation_id = map_gatekeeper_fields(cluster_name, group, kind, name, "-")
 
     resource_id = f"arn:{partition}:eks:{region}:{account_id}:cluster/{cluster_name}"
-    finding_id = (
-        f"arn:{partition}:eks:{region}:{account_id}:gatekeeper/violation/{constraint_name}-{violation_id}"
-    )
+    finding_id = f"arn:{partition}:eks:{region}:{account_id}:gatekeeper/violation/{constraint_name}-{violation_id}"
     record_state = RECORDSTATE_ACTIVE
     status = "FAILED"
     description = violation["message"]
     resource_id = map_gatekeeper_fields(cluster_name, group, kind, name, "/")
-    title = f'{resource_id} not compliant to policy {constraint_name}'
+    title = f"{resource_id} not compliant to policy {constraint_name}"
 
     d = datetime.datetime.utcnow()
     new_recorded_time = d.isoformat() + "Z"
@@ -316,7 +316,7 @@ def parse_policy_report(api_client, cluster_info):
                 pretty=pretty,
             )
             items = items + policy_report["items"]
-        
+
         for rule in items:
             for violation in rule["results"]:
                 finding = map_policy_violation_to_asff(cluster_info, rule, violation)
@@ -328,7 +328,6 @@ def parse_policy_report(api_client, cluster_info):
 
 
 def parse_gatekeeper_audit_report(api_client, cluster_info):
-
     """Retrieves AWS Security Hub findings based on Gatekeeper audit report"""
 
     securityhub_findings = []
@@ -368,7 +367,7 @@ def parse_gatekeeper_audit_report(api_client, cluster_info):
 
                         if len(violations) < total_violations:
                             logger.info(
-                                f'There are violations are missing in the report ({len(violations)} out of {total_violations}), create meta-finding to notify user',
+                                f"There are violations are missing in the report ({len(violations)} out of {total_violations}), create meta-finding to notify user",
                             )
                             constraint_item["metadata"]["severity"] = "INFORMATIONAL"
                             violation = {
