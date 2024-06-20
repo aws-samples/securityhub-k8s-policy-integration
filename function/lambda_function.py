@@ -354,8 +354,8 @@ def parse_gatekeeper_audit_report(api_client, cluster_info):
                     )
                     for constraint_item in constraint_details["items"]:
                         status = constraint_item["status"]
-                        total_violations = status["totalViolations"]
-                        violations = status["violations"]
+                        total_violations = status.get("totalViolations",0)
+                        violations = status.get("violations",[])
 
                         for violation in violations:
                             finding = map_gatekeeper_violation_to_asff(
